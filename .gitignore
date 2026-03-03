@@ -1,0 +1,15 @@
+/node_modules
+.env
+/credentials.json
+/client_secret*.json
+/token.json
+/syncedEvents.json
+/package-lock.json
+/package.json
+/server.js
+/auth.js
+/lib/calendar.js
+/lib/limoexpress.js
+/lib/sync.js
+/lib/syncedEvents.js
+/lib/calendar.js
