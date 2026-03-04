@@ -24,7 +24,7 @@ async function fetchBookingTypes(url, headers) {
 }
 
 async function main() {
-  let { res, data } = await fetchBookingTypes(`${baseUrl}/api/integration/clients`, {
+  let { res, data } = await fetchBookingTypes(`${baseUrl}/api/integration/currencies`, {
     Authorization: authHeader,
     Accept: 'application/json',
   });
