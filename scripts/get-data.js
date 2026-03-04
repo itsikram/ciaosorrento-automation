@@ -19,11 +19,12 @@ const authHeader = `Bearer ${token}`;
 async function fetchBookingTypes(url, headers) {
   const res = await fetch(url, { headers });
   const data = await res.json().catch(() => ({}));
+  console.log(res,data);
   return { res, data };
 }
 
 async function main() {
-  let { res, data } = await fetchBookingTypes(`${baseUrl}/api/integration/booking-types`, {
+  let { res, data } = await fetchBookingTypes(`${baseUrl}/api/integration/clients`, {
     Authorization: authHeader,
     Accept: 'application/json',
   });
