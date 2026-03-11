@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: calendar-limoexpress-automation
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        fromService:
+          type: web
+          name: calendar-limoexpress-automation
+          property: port
+    # Note: Add all other environment variables in Render dashboard:
+    # - GOOGLE_CREDENTIALS_JSON (or GOOGLE_CREDENTIALS_PATH)
+    # - GOOGLE_TOKEN_JSON (or ensure token.json is in repo)
+    # - GOOGLE_CALENDAR_ID
+    # - LIMOEXPRESS_API_URL
+    # - LIMOEXPRESS_API_KEY
+    # - LIMOEXPRESS_BOOKING_TYPE_ID
+    # - WEBHOOK_BASE_URL (optional, for push notifications)
+    # - CALENDAR_POLL_MINUTES (optional, for polling mode)
