@@ -3,6 +3,5 @@
 /credentials.json
 /client_secret*.json
 /token.json
-/syncedEvents.json
 /data/credentials.json
 /data/config.json

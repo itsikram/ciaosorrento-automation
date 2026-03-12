@@ -148,6 +148,7 @@ app.post('/auth/generate-token', async (req, res) => {
   
   let credentials;
   try {
+    // Priority 1: Use provided credentials from request body
     if (GOOGLE_CREDENTIALS_JSON) {
       credentials = JSON.parse(GOOGLE_CREDENTIALS_JSON);
     } else if (GOOGLE_CREDENTIALS_PATH) {
@@ -159,23 +160,32 @@ app.post('/auth/generate-token', async (req, res) => {
       }
       credentials = JSON.parse(fs.readFileSync(credPath, 'utf8'));
     } else {
-      // Try to load from config or env
-      const configData = readConfig();
-      if (configData.GOOGLE_CREDENTIALS_JSON) {
-        credentials = JSON.parse(configData.GOOGLE_CREDENTIALS_JSON);
-      } else if (configData.GOOGLE_CREDENTIALS_PATH) {
-        const credPath = path.isAbsolute(configData.GOOGLE_CREDENTIALS_PATH)
-          ? configData.GOOGLE_CREDENTIALS_PATH
-          : path.join(__dirname, configData.GOOGLE_CREDENTIALS_PATH);
+      // Priority 2: Check environment variables first (most secure)
+      if (process.env.GOOGLE_CREDENTIALS_JSON) {
+        credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
+      } else if (process.env.GOOGLE_CREDENTIALS_PATH) {
+        const credPath = path.isAbsolute(process.env.GOOGLE_CREDENTIALS_PATH)
+          ? process.env.GOOGLE_CREDENTIALS_PATH
+          : path.join(__dirname, process.env.GOOGLE_CREDENTIALS_PATH);
         if (fs.existsSync(credPath)) {
           credentials = JSON.parse(fs.readFileSync(credPath, 'utf8'));
         }
-      }
-      
-      if (!credentials) {
-        if (process.env.GOOGLE_CREDENTIALS_JSON) {
-          credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
-        } else {
+      } else {
+        // Priority 3: Try to load from config file
+        const configData = readConfig();
+        if (configData.GOOGLE_CREDENTIALS_JSON) {
+          credentials = JSON.parse(configData.GOOGLE_CREDENTIALS_JSON);
+        } else if (configData.GOOGLE_CREDENTIALS_PATH) {
+          const credPath = path.isAbsolute(configData.GOOGLE_CREDENTIALS_PATH)
+            ? configData.GOOGLE_CREDENTIALS_PATH
+            : path.join(__dirname, configData.GOOGLE_CREDENTIALS_PATH);
+          if (fs.existsSync(credPath)) {
+            credentials = JSON.parse(fs.readFileSync(credPath, 'utf8'));
+          }
+        }
+        
+        // Priority 4: Fallback to default path
+        if (!credentials) {
           const defaultPath = path.join(__dirname, 'credentials.json');
           if (fs.existsSync(defaultPath)) {
             credentials = JSON.parse(fs.readFileSync(defaultPath, 'utf8'));
