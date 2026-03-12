@@ -193,7 +193,38 @@ app.post('/auth/generate-token', async (req, res) => {
       return res.json({ success: false, error: 'Invalid credentials format. Expected installed or web object with client_id and client_secret.' });
     }
 
-    const REDIRECT_URI = `http://localhost:${PORT}/auth/oauth2callback`;
+    // Determine redirect URI based on request or environment
+    // Priority: 1) OAUTH_REDIRECT_URI env var, 2) Request host, 3) Environment detection
+    let REDIRECT_URI = process.env.OAUTH_REDIRECT_URI;
+    if (!REDIRECT_URI) {
+      // Try to detect from request headers (works for both local and production)
+      const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+      const host = req.headers['x-forwarded-host'] || req.headers.host || `localhost:${PORT}`;
+      
+      // If host contains onrender.com, use https with the exact host
+      if (host.includes('onrender.com')) {
+        // Use the exact host from the request, but ensure it's https
+        const hostname = host.split(':')[0]; // Remove port if present
+        REDIRECT_URI = `https://${hostname}/oauth2callback`;
+      } else if (host.includes('localhost') || host.includes('127.0.0.1')) {
+        REDIRECT_URI = `http://${host}/oauth2callback`;
+      } else {
+        // Fallback: check environment variables
+        const baseUrl = process.env.WEBHOOK_BASE_URL || process.env.BASE_URL;
+        if (baseUrl && baseUrl.startsWith('https://')) {
+          REDIRECT_URI = `${baseUrl}/oauth2callback`;
+        } else if (process.env.NODE_ENV === 'production') {
+          // Default production URL for Render.com (must match Google Cloud Console)
+          REDIRECT_URI = 'https://ciaosorrento-automation-0h3m.onrender.com/oauth2callback';
+        } else {
+          REDIRECT_URI = `http://localhost:${PORT}/oauth2callback`;
+        }
+      }
+    }
+    
+    // Log the redirect URI being used (for debugging)
+    console.log('[OAuth] Using redirect URI:', REDIRECT_URI);
+    
     const oauth2Client = new google.auth.OAuth2(creds.client_id, creds.client_secret, REDIRECT_URI);
     
     // Store client temporarily for callback
@@ -209,15 +240,17 @@ app.post('/auth/generate-token', async (req, res) => {
     res.json({ 
       success: true, 
       authUrl: authUrl,
-      message: 'Open the authUrl in your browser to complete authorization.'
+      redirectUri: REDIRECT_URI,
+      message: 'Open the authUrl in your browser to complete authorization.',
+      note: `Using redirect URI: ${REDIRECT_URI}. Make sure this matches exactly what's configured in Google Cloud Console.`
     });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
 });
 
-// OAuth callback handler
-app.get('/auth/oauth2callback', async (req, res) => {
+// OAuth callback handler - supports both /oauth2callback and /auth/oauth2callback for compatibility
+const handleOAuthCallback = async (req, res) => {
   if (!pendingOAuthClient) {
     return res.status(400).send('<html><body><h1>Error</h1><p>No pending OAuth request. Please start token generation from the credentials page.</p></body></html>');
   }
@@ -244,7 +277,11 @@ app.get('/auth/oauth2callback', async (req, res) => {
     pendingOAuthClient = null;
     res.status(500).send(`<html><body><h1>Error</h1><p>Failed to get token: ${err.message}</p></body></html>`);
   }
-});
+};
+
+// Support both routes for compatibility
+app.get('/oauth2callback', handleOAuthCallback);
+app.get('/auth/oauth2callback', handleOAuthCallback);
 
 // Google Calendar push notifications hit this URL (must be HTTPS in production).
 // Respond 200 immediately, then sync in background.
