@@ -3,6 +3,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
+const https = require('https');
 const { google } = require('googleapis');
 const { syncCalendarToLimoExpress } = require('./lib/sync');
 const calendar = require('./lib/calendar');
@@ -277,10 +278,35 @@ app.post('/sync', async (req, res) => {
   }
 });
 
+// Function to call external API
+function callExternalAPI() {
+  const apiUrl = 'https://ciaosorrento-automation-0h3m.onrender.com/';
+  
+  https.get(apiUrl, (res) => {
+    let data = '';
+    
+    res.on('data', (chunk) => {
+      data += chunk;
+    });
+    
+    res.on('end', () => {
+      console.log(`[API Call] Successfully called ${apiUrl} - Status: ${res.statusCode}`);
+    });
+  }).on('error', (err) => {
+    console.error(`[API Call] Error calling ${apiUrl}:`, err.message);
+  });
+}
+
 // Start server
 app.listen(PORT, async () => {
   console.log(`Server is running on http://localhost:${PORT}`);
   console.log('Automation: new Google Calendar events → LimoExpress reservations');
+
+  // Set up external API call every 15 minutes
+  const apiCallInterval = 15 * 60 * 1000; // 15 minutes in milliseconds
+  setInterval(callExternalAPI, apiCallInterval);
+  console.log('External API will be called every 15 minutes.');
+  callExternalAPI(); // Call immediately on startup
 
   const webhookBase = process.env.WEBHOOK_BASE_URL;
   const pollMinutes = parseInt(config.getConfigWithDefault('CALENDAR_POLL_MINUTES', '0'), 10) || 0;
